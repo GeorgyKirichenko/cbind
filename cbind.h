@@ -91,7 +91,7 @@ exec_call(void *call)
 		"mov 0(%%r12), %%rax\n"
 		"jmp *%%rax\n"
 	:
-	: "r" (call)
+	: "=r" (call)
 	: "r12", "rax", "rsp", "rdi", "rsi", "rcx", "rdx", "r8", "r9"
 	: exit);
 exit:
