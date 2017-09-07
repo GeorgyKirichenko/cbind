@@ -11,13 +11,13 @@ Supported platforms are Linux/x86_64 with gcc
 
 Support for x86/arm/arm64, FreeBSD/MacOS and clang is in progress.
 
-Example:
+## Example:
+```
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "cbind.h"
-
 static void *
 alloc_cb(void *data, int size)
 {
@@ -50,3 +50,4 @@ main(int argc, char **argv)
 	free(p);
 	return 0;
 }
+```
