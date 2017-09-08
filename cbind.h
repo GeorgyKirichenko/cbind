@@ -72,18 +72,21 @@ asm volatile (\
 FUNC(MAP(CALLA, COMMA, ARGS));\
 ret:\
 asm volatile(\
-	"mov 8(%0), %%rax\n"\
-	"jmp *%%rax\n"\
+	"mov 8(%0), %%rcx\n"\
+	"mov %0, %%rax\n"\
+	"add %1, %%rax\n"\
+	"jmp *%%rcx\n"\
 	:\
-	: "r"(_args));\
+	: "r"(_args), "i" (sizeof(*_args)));\
 }\
 exit:\
 ALLOC(&_args, sizeof(_args));\
 ;})
 
-static inline void
+static inline void *
 exec_call(void *call)
 {
+	register void *res asm("rax");
 	asm volatile goto(
 		"mov %0, %%r12\n"
 		"leaq %l[exit], %%rax\n"
@@ -91,10 +94,10 @@ exec_call(void *call)
 		"mov 0(%%r12), %%rax\n"
 		"jmp *%%rax\n"
 	:
-	: "=r" (call)
+	: "r" (call)
 	: "r12", "rax", "rsp", "rdi", "rsi", "rcx", "rdx", "r8", "r9"
 	: exit);
 exit:
-	return;
+	return res;
 }
 #endif
