@@ -1,6 +1,12 @@
 #ifndef CBIND_H
 #define CBIND_H
 
+#if defined(__cplusplus)
+	#define AUTO_TYPE auto
+#else
+	#define AUTO_TYPE __auto_type
+#endif
+
 #define INC0 1
 #define INC1 2
 #define INC2 3
@@ -36,9 +42,9 @@
 #define _IF_TRUE(ARGS...)		ARGS
 #define _IF_FALSE(ARGS...)
 
-#define DECLV(I, V)			__auto_type _v ## I = (V);
-#define DECLS(I, V)			typeof(_v ## I) _v ## I;
-#define INITS(I, V)			_v ## I
+#define DECLV(I, V)			AUTO_TYPE _vv ## I = (V);
+#define DECLS(I, V)			typeof(_vv ## I) _v ## I;
+#define INITS(I, V)			_vv ## I
 #define CALLA(I, V)			_args->_v ## I
 
 #define COMMA()				,
@@ -54,7 +60,7 @@
 ({									\
 	MAP(DECLV, EMPTY, ARGS);					\
 	struct _args {							\
-		void	*func;						\
+		void	*fun;						\
 		void	*ret;						\
 		MAP(DECLS, EMPTY, ARGS)					\
 	} _args = (struct _args){					\
@@ -65,24 +71,23 @@
 									\
 	asm volatile goto(						\
 		"leaq	%0, %%rcx\n"					\
-		"leaq	%l[start], %%rax\n"				\
+		"leaq	%l[start](%%rip), %%rax\n"			\
 		"movq	%%rax, 0(%%rcx)\n"				\
-		"leaq	%l[exit], %%rax\n"				\
-		"movq	%%rax, 8(%%rcx)\n"				\
 		"jmp	%l[exit]\n"					\
 		:							\
 		: "m"(_args)						\
 		: "rax", "rcx"						\
-		: start, ret, exit);					\
+		: start, exit);						\
 start:									\
 	{								\
 		register struct _args *_args asm ("r12");		\
 		asm volatile (						\
+			"movq %%rsp, %%r13\n"				\
 			"and $0xfffffffffffffff0, %%rsp\n"		\
 			: "=r"(_args));					\
 		FUNC(MAP(CALLA, COMMA, ARGS));				\
-ret:									\
 		asm volatile(						\
+			"movq 	%%r13, %%rsp\n"				\
 			"mov	8(%0), %%rcx\n"				\
 			"mov	%0, %%rax\n"				\
 			"add	%1, %%rax\n"				\
@@ -100,13 +105,13 @@ exec_call(void *call)
 	register void *res asm("rax");
 	asm volatile goto(
 		"mov	%0, %%r12\n"
-		"leaq	%l[exit], %%rax\n"
+		"leaq	%l[exit](%%rip), %%rax\n"
 		"mov	%%rax, 8(%%r12)\n"
 		"mov	0(%%r12), %%rax\n"
 		"jmp	*%%rax\n"
 	:
 	: "r" (call)
-	: "r12", "rax", "rsp", "rdi", "rsi", "rcx", "rdx", "r8", "r9"
+	: "r12", "rax", "rdi", "rsi", "rcx", "rdx", "r8", "r9", "r13"
 	: exit);
 exit:
 	return res;
