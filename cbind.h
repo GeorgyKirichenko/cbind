@@ -58,6 +58,7 @@
 
 #define make_call(ALLOC, FUNC, ARGS...)					\
 ({									\
+	__label__ start, exit;						\
 	MAP(DECLV, EMPTY, ARGS);					\
 	struct _args {							\
 		void	*fun;						\
