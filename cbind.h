@@ -59,14 +59,17 @@
 #define make_call(ALLOC, FUNC, ARGS...)					\
 ({									\
 	__label__ start, exit;						\
+	AUTO_TYPE vfunc = FUNC;						\
 	MAP(DECLV, EMPTY, ARGS);					\
 	struct _args {							\
-		void	*fun;						\
-		void	*ret;						\
+		void		*entry;					\
+		void		*exit;					\
+		typeof(vfunc)	func;					\
 		MAP(DECLS, EMPTY, ARGS)					\
 	} _args = (struct _args){					\
-		.fun	= NULL,						\
-		.ret	= NULL,						\
+		.entry		= NULL,					\
+		.exit		= NULL,					\
+		.func		= vfunc,				\
 		MAP(INITS, COMMA, ARGS)					\
 	};								\
 									\
@@ -83,10 +86,12 @@ start:									\
 	{								\
 		register struct _args *_args asm ("r12");		\
 		asm volatile (						\
+			"add %1, 0(%%r13)\n"				\
 			"movq %%rsp, %%r13\n"				\
 			"and $0xfffffffffffffff0, %%rsp\n"		\
-			: "=r"(_args));					\
-		FUNC(MAP(CALLA, COMMA, ARGS));				\
+			: "=r"(_args)					\
+			: "i" (sizeof(*_args)));			\
+		_args->func(MAP(CALLA, COMMA, ARGS));			\
 		asm volatile(						\
 			"movq 	%%r13, %%rsp\n"				\
 			"mov	8(%0), %%rcx\n"				\
@@ -101,18 +106,19 @@ exit:									\
 })
 
 static inline void *
-exec_call(void *call)
+exec_call(void **call)
 {
 	register void *res asm("rax");
 	asm volatile goto(
-		"mov	%0, %%r12\n"
+		"movq	%0, %%r13\n"
+		"movq	0(%%r13), %%r12\n"
 		"leaq	%l[exit](%%rip), %%rax\n"
-		"mov	%%rax, 8(%%r12)\n"
-		"mov	0(%%r12), %%rax\n"
+		"movq	%%rax, 8(%%r12)\n"
+		"movq	0(%%r12), %%rax\n"
 		"jmp	*%%rax\n"
 	:
 	: "r" (call)
-	: "r12", "rax", "rdi", "rsi", "rcx", "rdx", "r8", "r9", "r13"
+	: "rax", "rdi", "rsi", "rcx", "rdx", "r8", "r9", "r12", "r13"
 	: exit);
 exit:
 	return res;
